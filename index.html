@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Lake: Definitive Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sky-top: #a1c4fd;
+            --sky-bottom: #c2e9fb;
+            --water-top: #6a9fb5;
+            --water-mid: #547c8c;
+            --water-deep: #3b5a6b;
+            --sand: #d2b48c;
+            --accent: #3b82f6; /* A slightly more vibrant blue */
+            --accent-dark: #2563eb;
+            --accent-light: #eff6ff;
+            --text-light: #f0f9ff;
+            --text-dark: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --purple: #7c3aed;
+        }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+        body { font-family: 'Inter', sans-serif; overflow: hidden; background-color: var(--water-deep); }
+        .caveat { font-family: 'Caveat', cursive; }
+        .lake-container { background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 40%, var(--water-top) 41%, var(--water-mid) 70%, var(--water-deep) 100%); overflow: hidden; position: relative; }
+        .lake-container::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><filter id="n"><feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.05"/></svg>'); z-index: 1; pointer-events: none; }
+        .lake-container::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 150px 20px rgba(0,0,0,0.25); z-index: 2; pointer-events: none; }
+        .fish { position: absolute; width: 140px; height: 140px; will-change: transform; cursor: pointer; }
+        .fish-inner { width: 100%; height: 100%; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.25)); transition: transform 0.3s ease-out, filter 0.3s ease-out; animation: fish-bob 4s ease-in-out infinite; position: relative; overflow: hidden;}
+        .fish-inner::after { content: ''; position: absolute; top: 0; left: -150%; width: 50%; height: 100%; background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%); transform: skewX(-25deg); animation: fish-shimmer 5s ease-in-out infinite; }
+        @keyframes fish-shimmer { 0% { left: -150%; } 50% { left: 200%; } 100% { left: 200%; } }
+        .fish:hover .fish-inner, .fish:focus-visible .fish-inner { transform: scale(1.2); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4)); animation-play-state: paused; }
+        .fish.caught .fish-inner { filter: grayscale(90%) opacity(0.4) drop-shadow(0 2px 4px rgba(0,0,0,0.1)); animation-play-state: paused; }
+        .fish.caught .fish-inner::after { display: none; }
+        .fish.caught { cursor: default; pointer-events: none; }
+        .fish-hover-target { position: absolute; top: -25px; left: -25px; right: -25px; bottom: -25px; }
+        @keyframes fish-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .splash { position: absolute; width: 100px; height: 100px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="%23ffffff" stroke-width="4" fill="none" opacity="0.8"><animate attributeName="r" from="0" to="50" dur="0.5s" begin="0s" repeatCount="1" fill="freeze" /><animate attributeName="opacity" from="0.8" to="0" dur="0.5s" begin="0s" repeatCount="1" fill="freeze" /></circle></svg>'); animation: fadeOut 0.5s forwards; pointer-events: none; z-index: 11; }
+        @keyframes fadeOut { to { opacity: 0; } }
+        .modal-backdrop { background-color: rgba(12, 74, 110, 0.6); backdrop-filter: blur(12px); }
+        .seabed { background: linear-gradient(to top, #bba970, var(--sand)); filter: blur(3px); transition: transform 0.3s ease-out; position: absolute; bottom: 0; left: 0; width: 100%; z-index: 0;}
+        .seabed-object { position: absolute; bottom: 0; transition: transform 0.3s ease-out; will-change: transform; }
+        .bubble { position: absolute; bottom: -150px; background-color: rgba(255, 255, 255, 0.25); border-radius: 50%; animation: rise linear infinite; opacity: 0; box-shadow: 0 0 5px rgba(255,255,255,0.2); }
+        @keyframes rise { 0% { transform: translateY(0) translateX(0); opacity: 0.6; } 50% { transform: translateX(25px); } 100% { transform: translateY(-120vh) translateX(-25px); opacity: 0; } }
+        .light-ray { position: absolute; top: -150px; width: 250px; height: 350px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent); transform-origin: top center; animation: sway 18s ease-in-out infinite; transition: transform 0.3s ease-out; }
+        @keyframes sway { 0%, 100% { transform: rotate(-25deg); opacity: 0.9; } 50% { transform: rotate(25deg); opacity: 0.7; } }
+        .progress-container { background-color: rgba(0,0,0,0.25); border-radius: 9999px; padding: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); }
+        .progress-bar { background: linear-gradient(to right, #a5f3fc, #22d3ee); transition: width 0.5s ease-in-out; }
+        .field-guide { background: rgba(0,0,0,0.3); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.25); }
+        .guide-item { transition: all 0.2s ease-in-out; cursor: pointer; position: relative; }
+        .guide-item:hover, .guide-item:focus-visible { background-color: rgba(255,255,255,0.15); transform: translateY(-5px); outline: none; box-shadow: 0 0 0 3px rgba(165, 243, 252, 0.6); }
+        .guide-item.mastered { filter: grayscale(80%) opacity(0.6); }
+        .challenge-option { transition: all 0.2s ease-in-out; border-color: #d1d5db; }
+        .challenge-option:hover, .challenge-option:focus-visible { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); border-color: var(--accent); outline: none; }
+        .tab-button { transition: all 0.2s ease-in-out; }
+        .tab-button.active { border-color: var(--accent); color: var(--accent); background-color: var(--accent-light); }
+        .completion-overlay { background-color: rgba(12, 74, 110, 0.8); backdrop-filter: blur(12px); }
+        .quiz-check-label { cursor: pointer; transition: all 0.2s ease-in-out; }
+        .quiz-check-input:checked + .quiz-check-label { background-color: var(--accent-light); border-color: var(--accent); color: var(--text-dark); }
+        .quiz-check-input:focus-visible + .quiz-check-label { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        @keyframes ripple-effect { to { transform: scale(4); opacity: 0; } }
+        .ripple-container { position: relative; overflow: hidden; }
+        .ripple { position: absolute; border-radius: 50%; transform: scale(0); animation: ripple-effect 600ms linear; background-color: rgba(255, 255, 255, 0.7); }
+        #guide-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; font-size: 0.875rem; width: max-content; max-width: 300px; text-align: center; z-index: 999; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; margin-bottom: 10px; }
+        #guide-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-width: 5px; border-style: solid; border-color: rgba(0,0,0,0.8) transparent transparent transparent; }
+    </style>
+</head>
+<body class="text-sky-900">
+    <div id="aria-announcer" class="sr-only" aria-live="polite"></div>
+    <div id="app" class="lake-container w-full h-screen">
+        <!-- Scenery - This layer is for parallax -->
+        <div id="scenery" class="absolute inset-0 z-0">
+            <div class="light-ray" style="left: 10%; animation-delay: -5s;"></div>
+            <div class="light-ray" style="left: 40%; animation-duration: 22s;"></div>
+            <div class="light-ray" style="left: 70%; animation-delay: -10s;"></div>
+            <div class="seabed h-32"></div>
+            <!-- Seabed decorations -->
+            <div class="seabed-object" style="left: 5%; bottom: -20px; width: 120px; transform-origin: bottom center;" data-parallax-factor="0.4">
+                <svg viewBox="0 0 100 150" fill="#4a7c59"><path d="M50 150 C 40 130, 60 110, 50 90 S 40 70, 50 50 S 60 30, 50 10 S 50 0, 50 0 M50 150 C 60 130, 40 110, 50 90 S 60 70, 50 50 S 40 30, 50 10"/></svg>
+            </div>
+            <div class="seabed-object" style="right: 10%; bottom: -10px; width: 150px; transform-origin: bottom center;" data-parallax-factor="0.6">
+                 <svg viewBox="0 0 150 100" fill="#3d6b4a"><path d="M0 100 C 20 100, 10 40, 30 30 S 50 40, 60 60 S 80 20, 90 20 S 110 80, 120 70 S 150 90, 150 100 Z"/></svg>
+            </div>
+             <div class="seabed-object" style="left: 20%; bottom: 5px; width: 80px; transform-origin: bottom center;" data-parallax-factor="0.5">
+                <svg viewBox="0 0 80 120" fill="#5a9c69"><path d="M40 120 C 30 100, 50 80, 40 60 S 30 40, 40 20 S 40 0, 40 0"/></svg>
+            </div>
+        </div>
+
+        <header class="absolute top-0 left-0 w-full p-4 md:p-6 z-30 text-center text-white">
+            <div class="flex items-center justify-center relative">
+                <h1 class="caveat text-6xl md:text-8xl" style="text-shadow: 3px 3px 10px rgba(0,0,0,0.5);">Phishing Lake</h1>
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <button id="skip-to-exam-header-btn" class="hidden bg-white/20 hover:bg-white/30 text-white font-semibold py-1 px-3 rounded-lg text-xs transition-colors ripple-container" aria-label="Skip to Final Exam">
+                        Final Exam
+                    </button>
+                    <button id="reset-progress-button" class="bg-white/20 hover:bg-white/30 text-white font-semibold py-1 px-3 rounded-lg text-xs transition-colors ripple-container" aria-label="Reset all progress">
+                        Reset
+                    </button>
+                </div>
+            </div>
+            <p class="text-lg md:text-xl mt-2 font-semibold" style="text-shadow: 1px 1px 6px rgba(0,0,0,0.5);">Catch a fish or use the Field Guide to begin.</p>
+            <div class="max-w-sm mx-auto mt-4">
+                <div class="flex justify-between items-center mb-1 text-sm font-bold">
+                    <span>Mastery Progress</span>
+                    <span id="progress-text">0 / 12 Mastered</span>
+                </div>
+                <div class="progress-container w-full">
+                    <div id="progress-bar" class="progress-bar h-3 rounded-full" style="width: 0%;"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Lake - This layer is for fish and is NOT affected by parallax -->
+        <div id="lake" class="relative w-full h-full z-10"></div>
+        <div id="bubbles-container"></div>
+
+        <div id="field-guide" class="absolute bottom-0 left-0 w-full z-20 field-guide flex flex-col items-center p-2">
+            <h3 class="text-white/80 text-xl caveat pb-1" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">Field Guide</h3>
+            <div id="field-guide-content" class="max-w-6xl mx-auto flex justify-center items-center gap-4 flex-wrap"></div>
+        </div>
+        <div id="guide-tooltip"></div>
+
+        <!-- Modals and Overlays -->
+        <div id="welcome-modal" role="dialog" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+            <div class="bg-gradient-to-br from-white to-sky-50 rounded-2xl shadow-2xl w-11/12 md:max-w-2xl p-8 text-center transform transition-all duration-300 scale-95 opacity-0">
+                <h2 class="text-5xl font-bold caveat text-sky-800 mb-4">Welcome to Phishing Lake!</h2>
+                <p class="text-sky-700 mb-6 leading-relaxed">Your goal is to become a cybersecurity expert by learning to identify different types of phishing attacks. Before you begin, let's cover the basics.</p>
+                <button id="start-learning-btn" class="w-full md:w-auto bg-blue-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 transition-all transform hover:scale-105 ripple-container">Let's Go</button>
+            </div>
+        </div>
+        
+        <div id="overview-modal" role="dialog" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"></div>
+        <div id="info-modal" role="dialog" aria-modal="true" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"></div>
+        <div id="completion-overlay" class="fixed inset-0 z-50 items-center justify-center hidden completion-overlay"></div>
+        <div id="final-quiz-overlay" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"></div>
+    </div>
+
+    <script>
+        const PhishingLake = {
+            // --- DATA ---
+            data: {
+              "phishingTypes": [
+                {
+                  "id": "phishing",
+                  "name": "Phishing",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"grad-phish\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#6a9fb5\"/><stop offset=\"100%\" stop-color=\"#8ac2d4\"/></linearGradient></defs><path fill=\"url(#grad-phish)\" d=\"M10 32c0-9 14-16 28-16 7 0 12 2 16 4s6 5 6 8-2 6-6 8-9 4-16 4c-14 0-28-7-28-16z\"/><polygon fill=\"url(#grad-phish)\" points=\"54 32 64 26 64 38\"/><path fill=\"url(#grad-phish)\" d=\"M28 20l6 4-6 4z\"/><circle cx=\"38\" cy=\"30\" r=\"2\" fill=\"#fff\"/><path fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linecap=\"round\" d=\"M8 4v34a7 7 0 0 0 14 0\"/><circle cx=\"8\" cy=\"4\" r=\"3\" fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
+                  "description": "General phishing is the broad class of social‑engineering attacks where scammers send unsolicited emails or texts that appear to come from trusted organizations. The messages usually contain generic greetings, grammatical mistakes, fake urgency (e.g., payment problems or account closures) and links or attachments leading to fraudulent websites. Clicking these links or opening attachments installs malware or harvests credentials. Phishing messages are mass‑distributed to many victims and often spoof well‑known brands.",
+                  "realWorldScenario": "A faculty member receives an email claiming their Office 365 mailbox is almost full. The message urges them to click a link to upgrade storage within 24 hours or risk losing emails. The sender’s domain doesn’t match the real university domain and the link points to a fake site designed to harvest credentials. This combines common phishing red flags—generic greeting, false urgency and a suspicious link.",
+                  "tips": [
+                    "Carefully examine the sender’s address and domain. Attackers often use look‑alike domains or slight misspellings to appear legitimate.",
+                    "Hover over links before clicking; ensure the URL matches the organization’s official site. Avoid clicking short or unfamiliar links.",
+                    "Never share passwords, Social Security numbers or financial data via email. Legitimate organizations don’t ask for sensitive information in unsolicited messages.",
+                    "Maintain up‑to‑date anti‑virus and anti‑phishing software; enable automatic updates for operating systems and mobile apps.",
+                    "Use spam filters and domain‑authentication technologies (SPF, DKIM, DMARC) to reduce phishing emails. Organizations should configure DMARC policies to reject or quarantine emails that fail authentication.",
+                    "Back up important data on external drives or in the cloud. If ransomware or malware arrives via a phishing link, having backups helps recover without paying attackers.",
+                    "Enable multi‑factor authentication (MFA) on accounts. MFA adds an extra layer of protection even if credentials are compromised.",
+                    "If uncertain, contact the organization directly using a phone number or website you know to be real rather than information in the email. Do not reply to the suspicious message.",
+                    "Report phishing emails to security teams or to the Anti‑Phishing Working Group (reportphishing@apwg.org) and delete them."
+                  ],
+                  "challenges": [
+                    {
+                      "prompt": "An email claims to be from your bank and says your account has been locked due to suspicious activity. The link directs you to update your details. Which red flags suggest this is phishing?",
+                      "options": [
+                        { "text": "The email includes your full name and originates from the bank’s verified domain.", "isCorrect": false },
+                        { "text": "It begins with a generic salutation (e.g., \"Dear Customer\") and threatens immediate account suspension.", "isCorrect": true }
+                      ],
+                      "example": "The message uses a generic greeting and false urgency to pressure you into clicking a malicious link.",
+                      "anatomy": [
+                        { "title": "Generic Greeting", "text": "Phishing emails often address the recipient with a non‑personalized greeting like \"Dear Customer\" instead of your real name.", "psychology": "Anonymity: Mass campaigns are easier when you don’t personalize each email." },
+                        { "title": "Urgency & Threats", "text": "Warnings about immediate account closure or data loss create panic and reduce critical thinking.", "psychology": "Fear and scarcity: People are more likely to comply quickly when they fear losing access to vital accounts." },
+                        { "title": "Suspicious URL", "text": "Hovering over the link shows an unfamiliar domain unrelated to the bank.", "psychology": "Deception: Attackers rely on victims not checking URLs before clicking." }
+                      ],
+                      "keyTakeaway": "Look for generic greetings, urgent language and mismatched URLs. When in doubt, call your bank using the number on your card and never click unsolicited links."
+                    },
+                    {
+                      "prompt": "You receive an email with an invoice attached from an unknown vendor. The email urges immediate payment to avoid penalties. What should you do?",
+                      "options": [
+                        { "text": "Open the attachment to see what it is, because you can’t verify the invoice without opening the file.", "isCorrect": false },
+                        { "text": "Delete the email and contact your finance department via a known channel, without opening the attachment.", "isCorrect": true }
+                      ],
+                      "example": "Delete suspicious emails and verify the sender through official means. Opening attachments from unknown senders can infect your device with malware.",
+                      "anatomy": [
+                        { "title": "Unexpected Attachment", "text": "Phishing emails often contain unsolicited attachments claiming to be invoices or receipts.", "psychology": "Curiosity: Attackers hope you’ll open the file out of curiosity or fear of missing a payment." },
+                        { "title": "Pressure to Act Quickly", "text": "The sender threatens penalties to force a rapid decision.", "psychology": "Urgency: People are more likely to bypass security protocols when rushed." }
+                      ],
+                      "keyTakeaway": "Never open attachments from unknown senders. Instead, verify invoices or payment requests using official contact channels."
+                    }
+                  ]
+                },
+                {
+                  "id": "spear_phishing",
+                  "name": "Spear Phishing",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"grad-spear\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#ffb347\"/><stop offset=\"100%\" stop-color=\"#ff8c00\"/></linearGradient></defs><path fill=\"url(#grad-spear)\" d=\"M4 32c0-6 10-12 24-12s28 6 28 12-14 12-28 12S4 38 4 32z\"/><polygon fill=\"url(#grad-spear)\" points=\"56 32 64 26 64 38\"/><path fill=\"url(#grad-spear)\" d=\"M24 22l8 4-8 4z\"/><polygon fill=\"url(#grad-spear)\" points=\"4 32 -6 30 -6 34\"/><circle cx=\"16\" cy=\"30\" r=\"2\" fill=\"#fff\"/><line x1=\"-2\" y1=\"6\" x2=\"66\" y2=\"62\" fill=\"none\" stroke=\"#333\" stroke-width=\"3\" stroke-linecap=\"round\"/></svg>",
+                  "description": "Spear phishing is a highly targeted form of phishing in which attackers research a specific individual or small group and craft personalized messages that appear legitimate. Attackers may reference recent events, names of colleagues or projects, and use domains that closely resemble official domains to build trust. Because the content is tailored, victims often fail to recognize the deception.",
+                  "realWorldScenario": "A research fellow receives an email from what appears to be their department head, congratulating them on a recent publication and asking for an urgent review of a \"grant budget\" attached in a password‑protected file. The attacker gathered details from social media and the university website to craft a convincing request. The attachment actually contains malware that exfiltrates credentials.",
+                  "tips": [
+                    "Limit the personal and professional information you share publicly. Attackers scour social media and company websites for details to personalize their messages.",
+                    "Be wary of unsolicited emails, even if they reference your name, recent events or colleagues. Check that the sender’s domain exactly matches the legitimate organization’s domain and watch for subtle misspellings.",
+                    "Never fulfill requests for confidential information or fund transfers sent via email. Verify through a separate communication channel, such as a phone call to the requestor using a known number.",
+                    "Do not open attachments or click links from unexpected emails. When in doubt, ask your IT or security team to scan attachments for malware.",
+                    "Keep software, operating systems and security tools patched and updated. Attackers may exploit known vulnerabilities if your systems are outdated.",
+                    "Enable multi‑factor authentication on email and cloud accounts. MFA protects your account even if an attacker steals your credentials.",
+                    "Encourage regular phishing awareness training. By learning what spear‑phishing looks like, employees and researchers will recognize unusual requests and report them early.",
+                    "Organizations should implement domain‑based message authentication (DMARC) and use email filtering to detect spoofed domains and suspicious attachments."
+                  ],
+                  "challenges": [
+                    {
+                      "prompt": "You’re a research fellow who just presented at a conference. You receive an email from a colleague asking you to review a \"restricted\" funding proposal using the attached document. The email references the conference but comes from an unfamiliar domain. What should you do?",
+                      "options": [
+                        { "text": "Open the document to help your colleague, since it's polite to respond quickly after a conference.", "isCorrect": false },
+                        { "text": "Do not open the attachment; call or message your colleague via known contact information to confirm.", "isCorrect": true }
+                      ],
+                      "example": "Spear‑phishing emails often contain detailed context from public sources. Always verify unexpected requests before opening attachments.",
+                      "anatomy": [
+                        { "title": "Personalization", "text": "The attacker references a recent conference to make the email believable.", "psychology": "Familiarity bias: We are more likely to trust information connected to our own experiences." },
+                        { "title": "Unfamiliar Domain", "text": "The sender’s domain does not match your organization’s legitimate domain.", "psychology": "Inattentional blindness: Focus on the context may cause you to miss subtle domain changes." }
+                      ],
+                      "keyTakeaway": "Double‑check personalized requests through trusted contact methods and never open unexpected attachments without verification."
+                    },
+                    {
+                      "prompt": "A senior scientist receives an email from a vendor they work with. The message contains a realistic invoice for lab equipment and requests a wire transfer to a new bank account. What is the safest action?",
+                      "options": [
+                        { "text": "Process the payment immediately, as vendors sometimes change accounts.", "isCorrect": false },
+                        { "text": "Contact the vendor via their official phone number to confirm the request is legitimate.", "isCorrect": true }
+                      ],
+                      "example": "Financial spear‑phishing often involves fraudulent invoices or bank account changes. Always validate such changes using official contact information.",
+                      "anatomy": [
+                        { "title": "Contextual Lure", "text": "Attackers use specific business relationships and realistic invoices to appear credible.", "psychology": "Authority bias: We trust known vendors and may comply without question." },
+                        { "title": "Account Change", "text": "Requests to change payment details via email are unusual and should be independently confirmed.", "psychology": "Risk aversion: Fear of delaying legitimate payments may make victims act rashly." }
+                      ],
+                      "keyTakeaway": "Always verify financial requests through official channels. Never wire money or change payment details based solely on an email."
+                    }
+                  ]
+                },
+                {
+                  "id": "whaling",
+                  "name": "Whaling",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" role=\"img\" aria-label=\"Whale icon\"><defs><radialGradient id=\"grad-body\" cx=\"30%\" cy=\"40%\" r=\"60%\"><stop offset=\"0%\" stop-color=\"#66b7ff\"/><stop offset=\"100%\" stop-color=\"#1e3a8a\"/></radialGradient><linearGradient id=\"grad-tail\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#1e40af\"/><stop offset=\"100%\" stop-color=\"#1e3a8a\"/></linearGradient><filter id=\"glow\" x=\"-50%\" y=\"-50%\" width=\"200%\" height=\"200%\"><feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"1.2\" result=\"blur\"/><feMerge><feMergeNode in=\"blur\"/><feMergeNode in=\"SourceGraphic\"/></feMerge></filter></defs><ellipse cx=\"32\" cy=\"36\" rx=\"26\" ry=\"16\" fill=\"url(#grad-body)\"/><path d=\"M56,34 L62,30 L58,34 L62,38 Z\" fill=\"url(#grad-tail)\"/><path d=\"M30,26 C32,22 36,22 38,26 L30,26 Z\" fill=\"url(#grad-tail)\"/><path d=\"M22,42 C24,40 28,42 22,44 Z\" fill=\"url(#grad-tail)\" opacity=\"0.8\"/><path d=\"M26,38 C30,36 34,36 38,38\" stroke=\"#fff\" stroke-width=\"1\" fill=\"none\" opacity=\"0.7\"/><g filter=\"url(#glow)\"><circle cx=\"40\" cy=\"32\" r=\"2\" fill=\"#fff\"/><circle cx=\"32\" cy=\"14\" r=\"2\" fill=\"#a0e1ff\"/><circle cx=\"28\" cy=\"16\" r=\"1.5\" fill=\"#a0e1ff\"/><circle cx=\"36\" cy=\"16\" r=\"1\" fill=\"#a0e1ff\"/></g></svg>",
+                  "description": "Whaling is a specialized form of spear‑phishing that targets high‑level executives—CEOs, CFOs, directors or other senior leaders—because they have the authority to approve large financial transactions or have access to highly sensitive data. Whaling emails and calls are meticulously researched, often leveraging personal details, corporate information and even AI‑generated voice or video deepfakes. Attackers create a sense of urgency and confidentiality to discourage verification.",
+                  "realWorldScenario": "A CFO receives an email purportedly from the CEO, sent while the CEO is traveling overseas. It references a confidential acquisition and instructs the CFO to wire $250 k to a new account within an hour. The email uses company jargon and references current projects, and a follow‑up phone call uses a convincing AI‑generated voice. In reality, attackers scraped public speeches and press releases to craft the message and voice.",
+                  "tips": [
+                    "Provide specialized security awareness training for executives and executive assistants. Teach them to recognize personalized scams, deepfake voice calls and unusual requests.",
+                    "Reduce the digital footprint of senior leadership. Encourage executives to limit public disclosure of their travel, personal interests or company projects on social media.",
+                    "Implement strict multi‑person approval processes and segregation of duties for large financial transactions or sensitive data requests. For example, require secondary confirmation from another executive before transferring funds.",
+                    "Use enterprise email security gateways and filtering to detect domain spoofing, suspicious attachments and AI‑generated content. Deploy DMARC, SPF and DKIM to prevent spoofed emails.",
+                    "Enable multi‑factor authentication on executive accounts and restrict access to highly privileged systems. MFA thwarts attackers even if credentials are stolen.",
+                    "Establish clear incident‑response procedures: employees should immediately report any suspicious messages to IT or security teams; executives should not approve large transfers via email alone.",
+                    "Be aware of emerging whaling tactics such as deepfake audio, AI‑driven personalized emails and voice‑spoofing. Verify urgent requests via a known phone number or in person to ensure authenticity.",
+                    "Consider using caller‑authentication or call‑back procedures when executives receive unexpected calls requesting sensitive actions. Do not trust caller ID alone."
+                  ],
+                  "challenges": [
+                    {
+                      "prompt": "You’re a finance director and receive an email from your CEO asking you to secretly approve a large wire transfer for a sensitive acquisition. The CEO is traveling and says time is critical. What should you do?",
+                      "options": [
+                        { "text": "Comply immediately to avoid missing the deadline, as keeping the project on schedule is the top priority.", "isCorrect": false },
+                        { "text": "Verify the request by calling the CEO on a known number and following your organization’s approval process.", "isCorrect": true }
+                      ],
+                      "example": "Whaling emails often include urgent, confidential requests. Always follow established approval procedures and confirm requests through another channel.",
+                      "anatomy": [
+                        { "title": "Authority & Urgency", "text": "Attackers impersonate executives and create a sense of urgency to override normal procedures.", "psychology": "Authority bias: We’re conditioned to obey leaders, especially under pressure." },
+                        { "title": "Out‑of‑band Verification", "text": "Using a known phone number to confirm the request prevents attackers from hijacking email-only communication.", "psychology": "Trust but verify: Critical decisions require multiple checks." }
+                      ],
+                      "keyTakeaway": "Never rely solely on email to authorize high‑value transactions. Implement multi‑person verification and always confirm with the requester via a trusted method."
+                    },
+                    {
+                      "prompt": "An executive receives a video call from a ‘trusted law firm’ partner requesting immediate release of sensitive documents related to an upcoming merger. The video appears legitimate but was unexpected. What is the safest response?",
+                      "options": [
+                        { "text": "Share the documents since the caller appears real and you don't want to cause a delay.", "isCorrect": false },
+                        { "text": "End the call and verify the request by contacting the partner through their official, pre-existing contact information.", "isCorrect": true }
+                      ],
+                      "example": "Deepfake video and audio technology can convincingly mimic trusted partners. Always confirm unexpected requests via established contact details before sharing sensitive information.",
+                      "anatomy": [
+                        { "title": "Deepfake Technology", "text": "Attackers can now create realistic video or audio clips that impersonate executives or partners.", "psychology": "Visual and auditory realism increases trust, making victims more likely to comply." },
+                        { "title": "Unsolicited Requests", "text": "Legitimate partners usually schedule calls through known channels. Unscheduled, urgent requests are a red flag.", "psychology": "Social engineering: Attackers use novelty and urgency to bypass critical thinking." }
+                      ],
+                      "keyTakeaway": "Deepfake calls are an emerging whaling tactic. Stop the conversation and contact the partner using a known phone number or email to confirm authenticity before sharing documents."
+                    }
+                  ]
+                },
+                {
+                  "id": "smishing",
+                  "name": "Smishing",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"grad-sms\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#8ddf75\"/><stop offset=\"100%\" stop-color=\"#6bbf59\"/></linearGradient></defs><path fill=\"url(#grad-sms)\" d=\"M6 32c0-7 12-14 26-14s26 7 26 14-12 14-26 14S6 39 6 32z\"/><polygon fill=\"url(#grad-sms)\" points=\"58 32 66 26 66 38\"/><path fill=\"url(#grad-sms)\" d=\"M22 22l6 3-6 3zM22 42l6-3-6-3z\"/><circle cx=\"28\" cy=\"30\" r=\"2\" fill=\"#fff\"/><rect x=\"12\" y=\"24\" width=\"9\" height=\"16\" rx=\"1\" fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"16.5\" cy=\"37\" r=\"1\" fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>",
+                  "description": "Smishing (SMS phishing) uses text messages or messaging apps to trick victims into revealing personal information, clicking malicious links or downloading malware. Messages often impersonate delivery services, banks or government agencies and may offer fake gifts, contests or urgent account alerts. Because people tend to trust text messages more than emails, smishing remains highly effective.",
+                  "realWorldScenario": "A person receives a text from a number that does not match a typical short code: ‘FedEx: Package delivery failed. A $1.99 redelivery fee is required. Click here to schedule: fedex-delivery-update.com.’ The link leads to a fake site that asks for payment details, thereby harvesting credit‑card numbers.",
+                  "tips": [
+                    "Do not send personal or financial information via text. Legitimate organizations will not ask for passwords, credit‑card numbers or government IDs over SMS.",
+                    "Inspect new phone numbers. Be cautious of international numbers or numbers that don’t follow the standard format. Smishing often uses full phone numbers rather than verified short codes.",
+                    "Avoid clicking suspicious links. Smishing messages commonly contain malicious links or attachments. Delete the message if you suspect it is fake.",
+                    "Contact businesses directly using official phone numbers or websites to verify any claims in a text message.",
+                    "Never respond to smishing texts. Replying (even with ‘STOP’) confirms that your number is active and can lead to more scam messages.",
+                    "Enable multi‑factor authentication on important accounts. Even if a password is compromised, MFA prevents unauthorized access.",
+                    "Install reputable mobile security or anti‑virus software and keep your phone’s operating system updated to protect against malware.",
+                    "Use call‑blocking or spam‑filtering tools to screen unknown numbers and text messages.",
+                    "Be skeptical of prize notifications, urgent payment requests or offers that sound too good to be true. Delete them or report them to your mobile provider."
+                  ],
+                  "challenges": [
+                    {
+                      "prompt": "You receive a text claiming that your parcel is waiting at the depot and a small fee is required for delivery. The link in the message uses a misspelled company name. What should you do?",
+                      "options": [
+                        { "text": "Click the link and pay the fee, since it’s only a small amount.", "isCorrect": false },
+                        { "text": "Delete the message and contact the courier via their official website or app.", "isCorrect": true }
+                      ],
+                      "example": "Smishing often uses fake delivery notices with small fees. Never click the link; always verify directly with the courier.",
+                      "anatomy": [
+                        { "title": "Lookalike URL", "text": "The link uses a domain that resembles the courier’s name but is slightly different.", "psychology": "Familiarity bias: People trust brands they know and may overlook subtle misspellings." },
+                        { "title": "Small Fee Trick", "text": "A small requested fee makes the scam seem low risk, encouraging quick payment.", "psychology": "Low friction: People are less cautious when the perceived loss is minor." }
+                      ],
+                      "keyTakeaway": "Do not click links in unsolicited texts. Always confirm delivery notices through official channels or apps."
+                    },
+                    {
+                      "prompt": "A text message from an unknown number says your bank account has been locked and instructs you to verify your identity via a link. How should you respond?",
+                      "options": [
+                        { "text": "Follow the link to unlock your account, as it could be important.", "isCorrect": false },
+                        { "text": "Ignore the text and call your bank using a number from your statement or official app.", "isCorrect": true }
+                      ],
+                      "example": "Smishing messages often mimic banks and include a link to a fake login portal. Always use an official number or app to verify account issues.",
+                      "anatomy": [
+                        { "title": "Urgent Account Issue", "text": "The message claims your account is locked to create a sense of panic.", "psychology": "Fear: People fear losing access to financial resources and may act quickly." },
+                        { "title": "Credential Harvesting Link", "text": "The link leads to a fake banking portal designed to steal your login credentials.", "psychology": "Deception: Attackers design sites to mimic the real bank’s interface." }
+                      ],
+                      "keyTakeaway": "Never trust a text requesting personal banking information. Always contact the institution via official channels."
+                    }
+                  ]
+                },
+                {
+                  "id": "vishing",
+                  "name": "Vishing",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"grad-voice\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#e57373\"/><stop offset=\"100%\" stop-color=\"#d32f2f\"/></linearGradient></defs><path fill=\"url(#grad-voice)\" d=\"M4 32c0-6 14-12 32-12s32 6 32 12-14 12-32 12S4 38 4 32z\"/><polygon fill=\"url(#grad-voice)\" points=\"60 32 68 26 68 38\"/><path fill=\"url(#grad-voice)\" d=\"M24 24l6 3-6 3z\"/><circle cx=\"18\" cy=\"30\" r=\"2\" fill=\"#fff\"/><path fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linecap=\"round\" d=\"M42 25c3 2 3 12 0 14\"/><path fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linecap=\"round\" d=\"M46 22c5 3 5 18 0 22\"/></svg>",
+                  "description": "Vishing (voice phishing) involves phone calls or voicemails in which scammers impersonate banks, government agencies or tech support to trick victims into revealing sensitive information or transferring money. Attackers may spoof caller IDs, use pre‑recorded messages or AI‑generated voices, and create a sense of urgency or fear (e.g., threats of arrest or account closure).", 
+                  "realWorldScenario": "An automated call claims to be from the tax authority and warns that you owe back taxes. It says you will be arrested unless you transfer payment immediately using gift cards. The caller ID displays the tax agency’s name, but the number is spoofed. When you press 1, a live \"agent\" pressures you to read your personal information and buy gift cards.",
+                  "tips": [
+                    "Educate yourself and your family about vishing tactics. Be aware that callers may spoof legitimate numbers, use AI‑generated voices or claim to represent reputable organizations.",
+                    "Use call‑blocking tools and spam filtering provided by your phone carrier or third‑party apps to screen suspicious calls.",
+                    "Do not trust caller ID alone; it can be manipulated. If a caller asks for personal or financial information, hang up.",
+                    "Never share sensitive information (such as Social Security numbers, credit‑card details, passwords or MFA codes) over the phone with unsolicited callers.",
+                    "End the call and contact the organization using a phone number from an official website, statement or back of your card. Legitimate banks or government agencies will never ask for payment by gift card or wire transfer over the phone.",
+                    "Be skeptical of any calls that create urgency, fear or threats of legal action. Scammers often use pressure tactics to coerce quick compliance.",
+                    "Enable multi‑factor authentication on financial and email accounts to reduce the impact if credentials are compromised. MFA prevents unauthorized access even if someone obtains your password.",
+                    "Report suspicious calls to your bank, local law enforcement and consumer protection agencies such as the FTC. Include the phone number, what was requested and any details of the call.",
+                    "Consider enrolling in identity‑theft protection services, which monitor your personal information for suspicious use and assist with recovery if fraud occurs."
+                  ],
+                  "challenges": [
+                    {
+                      "prompt": "You get a call from a number claiming to be your credit card’s fraud department. They say a suspicious charge occurred and they need you to confirm your full card number and CVV. What’s the correct response?",
+                      "options": [
+                        { "text": "Provide the card details to confirm your identity with the caller.", "isCorrect": false },
+                        { "text": "Hang up and call the number on the back of your card to verify the claim.", "isCorrect": true }
+                      ],
+                      "example": "Banks never ask for full card numbers, PINs or CVV codes over the phone. End the call and use a trusted number to verify the issue.",
+                      "anatomy": [
+                        { "title": "Sensitive Data Request", "text": "The caller requests your full card number and CVV, which banks never do.", "psychology": "Authority bias: Impersonating a bank plays on your trust." },
+                        { "title": "Urgent Fraud Claim", "text": "They create a sense of urgency by claiming suspicious activity.", "psychology": "Fear: You’re inclined to act quickly to protect your finances." }
+                      ],
+                      "keyTakeaway": "Never share card numbers or security codes with unsolicited callers. Contact your bank using the official number to verify any claims."
+                    },
+                    {
+                      "prompt": "A voice message says you’ve won a government grant and must provide your social security number to claim it. The message asks you to call back immediately. What should you do?",
+                      "options": [
+                        { "text": "Call back and provide the requested information to claim the grant.", "isCorrect": false },
+                        { "text": "Ignore the message and report it to the relevant authorities as a likely scam.", "isCorrect": true }
+                      ],
+                      "example": "Government agencies do not call unexpectedly to award grants or request personal information by phone. These messages are vishing scams.",
+                      "anatomy": [
+                        { "title": "Too Good to Be True", "text": "Winning a grant without applying is highly unlikely.", "psychology": "Greed: Scammers exploit the allure of free money to coax compliance." },
+                        { "title": "Requests for Sensitive Data", "text": "Asking for a social security number over the phone is a red flag.", "psychology": "Fear of missing out: People may reveal data to avoid losing the ‘grant’." }
+                      ],
+                      "keyTakeaway": "Unexpected calls offering grants or prizes are almost always scams. Do not return the call; report it to consumer protection authorities."
+                    }
+                  ]
+                },
+                {
+                  "id": "angler_phishing",
+                  "name": "Angler Phishing",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"grad-angler\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#ba68c8\"/><stop offset=\"100%\" stop-color=\"#9c27b0\"/></linearGradient></defs><path fill=\"url(#grad-angler)\" d=\"M6 32c0-9 15-18 30-18 6 0 11 1 15 3 5 3 7 7 7 10s-2 7-7 10c-4 2-9 3-15 3-15 0-30-9-30-18z\"/><polygon fill=\"url(#grad-angler)\" points=\"46 32 56 26 56 38\"/><path fill=\"url(#grad-angler)\" d=\"M22 24l5 3-5 3z\"/><circle cx=\"18\" cy=\"30\" r=\"2\" fill=\"#fff\"/><path fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linecap=\"round\" d=\"M52 4v26\"/><circle cx=\"52\" cy=\"32\" r=\"4\" fill=\"none\" stroke=\"#333\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
+                  "description": "Angler phishing targets users on social‑media platforms by impersonating customer‑service accounts. Attackers ‘angle’ for victims by monitoring public complaints and then quickly replying or direct‑messaging from fake accounts to solicit personal information or direct people to malicious websites. Because many users expect quick customer support responses online, they may not verify account authenticity.",
+                  "realWorldScenario": "After posting frustration about a delayed flight on Twitter, a user receives a response from @Airline_SupportHelp (with a similar logo but no verification badge). The account asks the user to direct‑message their booking reference and payment card number to process compensation. The link provided redirects to a spoofed airline site that collects login credentials.",
+                  "tips": [
+                    "Verify the legitimacy of support accounts before responding. Look for a verified badge (blue check mark), review the account’s follower count and history, and check for grammar or spelling mistakes in the profile.",
+                    "Tag official support accounts when you need help. Larger organizations often have specific accounts for customer issues—respond only to those accounts once they reply.",
+                    "If uncertain, contact the company via another channel—such as an official phone number, email or support page on the company’s website—to verify requests.",
+                    "Never click on links sent through unsolicited social‑media messages or comments. Scammers often use malicious links disguised as support portals.",
+                    "Do not share login details, personal data, credit‑card numbers or banking information over social media—even in direct messages.",
+                    "Report fake support accounts to the social‑media platform and warn others if you encounter them. Inform customers and colleagues about ongoing scams.",
+                    "Educate yourself and your team about angler phishing. Training helps employees recognize social‑media threats and avoid being tricked.",
+                    "Use official apps or websites for customer service rather than links provided in social‑media responses."
+                  ],
+                  "challenges": [
+                    {
+                      "prompt": "You tweet a complaint to your internet provider. Two accounts reply: one from @ISP_Help (verified) and another from @ISP-Support (no verification) asking you to click a link to \"reset your modem\". Which is likely the angler phishing attempt?",
+                      "options": [
+                        { "text": "The verified account, @ISP_Help, as it is responding to your public complaint.", "isCorrect": false },
+                        { "text": "The unverified account, @ISP-Support, especially because it prompts you to click an unsolicited link.", "isCorrect": true }
+                      ],
+                      "example": "Angler phishers use unverified or look‑alike accounts to deceive frustrated customers. Always check for verification badges and avoid unsolicited links.",
+                      "anatomy": [
+                        { "title": "Fake Support Account", "text": "The handle and profile mimic the real support account but lack the verification badge.", "psychology": "Authority imitation: Attackers rely on brand recognition to gain trust." },
+                        { "title": "Link Manipulation", "text": "The reply contains a link that is unrelated to the official support site.", "psychology": "Path of least resistance: Offering a quick fix encourages immediate action without verification." }
+                      ],
+                      "keyTakeaway": "Interact only with verified support accounts and avoid clicking unsolicited links. Always verify through official channels."
+                    },
+                    {
+                      "prompt": "A customer service page sends you a direct message on Facebook offering remote assistance. They ask you to install software so they can ‘fix’ your issue. What should you do?",
+                      "options": [
+                        { "text": "Install the software so the technician can troubleshoot your problem.", "isCorrect": false },
+                        { "text": "Refuse the request, as legitimate support will not ask you to install unsolicited software via social media.", "isCorrect": true }
+                      ],
+                      "example": "Remote‑access software is a common tool used by scammers to install malware or steal data. Only authorized support channels should request remote access.",
+                      "anatomy": [
+                        { "title": "Unsolicited Remote Access", "text": "Legitimate support rarely contacts users first or asks them to install remote‑access tools via social media.", "psychology": "Expertise bias: Phrases like ‘certified technician’ make the scam seem legitimate." },
+                        { "title": "Data Exfiltration", "text": "Remote software can capture keystrokes or install malware.", "psychology": "Power imbalance: Users may feel compelled to comply with someone claiming to fix their problem." }
+                      ],
+                      "keyTakeaway": "Never grant remote access to your device to unsolicited contacts on social media. Contact the company through official support channels."
+                    }
+                  ]
+                },
+                {
+                  "id": "glossary",
+                  "name": "Glossary",
+                  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"grad-glossary\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#9ca3af\"/><stop offset=\"100%\" stop-color=\"#6b7280\"/></linearGradient></defs><path fill=\"url(#grad-glossary)\" d=\"M12 2h40a4 4 0 0 1 4 4v52a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z\"/><path fill=\"#fff\" d=\"M14 8h36v42H14z\"/><path fill=\"url(#grad-glossary)\" d=\"M18 16h28v4H18zm0 8h28v4H18zm0 8h18v4H18z\"/></svg>",
+                  "description": "A reference guide to common cybersecurity terms used throughout Phishing Lake.",
+                  "realWorldScenario": "",
+                  "tips": [],
+                  "challenges": []
+                }
+              ],
+              "finalQuizQuestions": [
+                {
+                  "prompt": "You receive this email from your university’s IT department. Analyze it carefully. What red flags are present? (Select all that apply)",
+                  "content": "<div class=\"p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200\"><p class=\"font-bold\">From: IT Support &lt;it-support@university-systems.org&gt;</p><p><span class=\"font-bold\">Subject:</span> Action Required: Mailbox Storage Almost Full</p><hr class=\"my-2\"><p>Dear Faculty Member,</p><p>Our records indicate your university mailbox is at 98% capacity. To avoid service interruption and loss of important emails, you must upgrade your storage immediately.</p><p><a href=\"#\" class=\"text-blue-600 underline\" onclick=\"event.preventDefault()\">https://university.edu/mailbox-upgrade-portal</a></p><p>Failure to do so within 24 hours will result in account suspension.</p><p>Thank you,<br>University IT Services</p></div>",
+                  "options": [
+                    "The sender’s email domain is suspicious (it-support@university-systems.org instead of the official university domain)",
+                    "The email creates a false sense of urgency (24-hour deadline)",
+                    "The greeting is generic (‘Dear Faculty Member’ instead of your name)",
+                    "The email requests that you click a link to upgrade storage (a potential credential harvesting site)"
+                  ],
+                  "correctAnswers": [0, 1, 2, 3]
+                },
+                {
+                  "prompt": "You post on social media about a new research grant. Soon after, you get this direct message. What type of attack is this most likely to be?",
+                  "content": "<div class=\"p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200\"><p class=\"font-bold\">From: Grant Funding Council</p><hr class=\"my-2\"><p>Congratulations on the grant, Wyatt! We need to finalize the disbursement. To expedite the process, please provide your university portal login and password so we can directly deposit the funds. This is a secure channel.</p></div>",
+                  "options": [
+                    "Standard Phishing",
+                    "Spear Phishing",
+                    "Smishing",
+                    "Vishing"
+                  ],
+                  "correctAnswers": [1]
+                },
+                {
+                  "prompt": "Analyze the following text message. Which indicators suggest it’s a smishing attack? (Select all that apply)",
+                  "content": "<div class=\"p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200\"><p class=\"font-bold\">From: +1 (888) 555-0142</p><hr class=\"my-2\"><p>Your Netflix account has been suspended due to a payment issue. To restore access, please update your billing information here: netflix-account-status.com</p></div>",
+                  "options": [
+                    "The message comes from a standard phone number instead of a verified short code",
+                    "It uses a threat (suspension) to create urgency",
+                    "The URL is not the official netflix.com domain",
+                    "It was sent unexpectedly/unsolicited"
+                  ],
+                  "correctAnswers": [0, 1, 2, 3]
+                },
+                {
+                  "prompt": "A colleague gets a call from someone claiming to be from your corporate IT desk, saying there’s suspicious activity on their account. The caller asks for the colleague’s password to fix it. Which actions are appropriate? (Select all that apply)",
+                  "content": "<div class=\"p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200\"><p><strong>Caller:</strong> ‘Hello, this is IT support. We detected suspicious activity on your account. Please provide your password so we can secure it.’</p></div>",
+                  "options": [
+                    "Hang up immediately and call the IT desk using the official number on the company website",
+                    "Provide the password since the caller claims to be IT",
+                    "Ask the caller to prove their identity, then provide the password",
+                    "Report the incident to the security team"
+                  ],
+                  "correctAnswers": [0, 3]
+                },
+                {
+                  "prompt": "An email from 'accounts@microsft.com' asks you to validate your login to prevent your account from being deleted. Which phishing type does the misspelled domain name strongly suggest?",
+                  "content": "<div class='p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200'><p><strong>From:</strong> accounts@microsft.com</p><p><strong>Subject:</strong> Urgent: Account Deletion Notice</p></div>",
+                  "options": ["Vishing", "Smishing", "General Phishing", "Angler Phishing"],
+                  "correctAnswers": [2]
+                },
+                {
+                  "prompt": "You complain on Twitter about a bad experience with an online retailer. An account named '@Retailer_Cares' replies with a link to a 'compensation form'. What should you check for first? (Select all that apply)",
+                  "content": "<div class='p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200'><p><strong>@Retailer_Cares replied:</strong> We're so sorry for the trouble! Please fill out our compensation form to receive a full refund: [link]</p></div>",
+                  "options": ["Whether the account has a verified badge", "The account's follower count and post history", "If the compensation link goes to the official retailer's domain", "If the account has a professional-looking logo"],
+                  "correctAnswers": [0, 1, 2]
+                },
+                {
+                  "prompt": "A CFO receives an email from the CEO requesting an urgent wire transfer to a new vendor for a top-secret project. This is a classic example of what type of attack?",
+                  "content": "<div class='p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200'><p><strong>Email:</strong> 'Need you to process this wire transfer for Project Titan immediately. Utmost confidentiality is required.'</p></div>",
+                  "options": ["Smishing", "Angler Phishing", "Whaling", "Vishing"],
+                  "correctAnswers": [2]
+                },
+                {
+                  "prompt": "Which of the following are primary goals of most phishing attacks? (Select all that apply)",
+                  "content": "",
+                  "options": ["To steal login credentials", "To install malware on a device", "To trick someone into sending money", "To provide legitimate customer support"],
+                  "correctAnswers": [0, 1, 2]
+                },
+                {
+                  "prompt": "You receive an unexpected text message with a link to track a package you don't remember ordering. What is the safest course of action?",
+                  "content": "<div class='p-4 bg-gray-100 rounded-lg text-left text-sm my-4 border border-gray-200'><p><strong>Text:</strong> Your package is out for delivery. Track it here: [link]</p></div>",
+                  "options": ["Click the link to see where the package is", "Reply 'STOP' to the message", "Delete the message without clicking the link", "Forward the message to a friend to see if it's legitimate"],
+                  "correctAnswers": [2]
+                },
+                {
+                  "prompt": "An attacker uses information from your LinkedIn profile to send a personalized email about a job opportunity, with a malicious attachment. This highly targeted approach is best described as:",
+                  "content": "",
+                  "options": ["General Phishing", "Spear Phishing", "Vishing", "Whaling"],
+                  "correctAnswers": [1]
+                }
+              ],
+              "glossaryTerms": {
+                "Domain Name": "The address of a website as you would type it into a browser (e.g., example.com). Attackers often use look‑alike domains (e.g., examp1e.com) to trick users.",
+                "Multi‑Factor Authentication (MFA)": "A security process that requires two or more independent credentials to verify a user’s identity, such as a password plus a one‑time code or biometric data. MFA makes it harder for attackers to access accounts even if they have your password.",
+                "Social Engineering": "Manipulation techniques that exploit human psychology rather than technical vulnerabilities to steal information or money. Phishing, spear‑phishing, whaling, smishing, vishing and angler phishing are all social‑engineering attacks.",
+                "Credential Harvesting": "The act of illegally collecting usernames, passwords and other login details through deceptive means, such as fake login pages or phishing emails.",
+                "Malware": "Malicious software designed to disrupt computers, steal information or gain unauthorized access. Malware can spread through phishing links, smishing messages or rogue attachments.",
+                "URL (Uniform Resource Locator)": "The full address of a specific web page. Checking URLs carefully helps you identify fake links before clicking.",
+                "Spam Filter": "Email or messaging software that automatically detects and blocks unwanted or malicious messages. Spam filters help reduce phishing emails in your inbox.",
+                "Caller ID Spoofing": "The practice of falsifying the number that appears on your phone’s caller ID display. Vishing attackers use spoofing to appear as trusted organizations."
+              }
+            },
+            
+            // --- DOM Elements & State ---
+            dom: {},
+            state: {
+                fishObjects: [],
+                currentPhishType: null,
+                currentChallengeIndex: 0,
+                lastFocusedElement: null,
+                masteredChallenges: new Set(),
+                soundsReady: false,
+                lastFrameTime: 0,
+                swimBoundaries: { top: 150, bottom: 800 }
+            },
+            
+            // --- Initialization ---
+            init() {
+                this.cacheDom();
+                this.bindEvents();
+                this.state.masteredChallenges = new Set(JSON.parse(localStorage.getItem('masteredChallenges')) || []);
+                this.totalChallenges = this.data.phishingTypes.filter(t => t.id !== 'glossary').reduce((sum, type) => sum + type.challenges.length, 0);
+
+                this.calculateSwimBoundaries();
+                this.showWelcomeModal();
+                this.createFieldGuide();
+                
+                const totalFish = this.data.phishingTypes.filter(t => t.id !== 'glossary').flatMap(t => t.challenges).length;
+                let fishIndex = 0;
+                this.data.phishingTypes.filter(t => t.id !== 'glossary').forEach(type => {
+                    type.challenges.forEach((_, index) => {
+                        this.createFish(type, index, fishIndex++, totalFish);
+                    });
+                });
+                
+                this.updateProgress();
+                setInterval(() => this.createBubble(), 200);
+                requestAnimationFrame(this.animate.bind(this));
+            },
+
+            cacheDom() {
+                this.dom.app = document.getElementById('app');
+                this.dom.header = document.querySelector('header');
+                this.dom.fieldGuide = document.getElementById('field-guide');
+                this.dom.scenery = document.getElementById('scenery');
+                this.dom.lake = document.getElementById('lake');
+                this.dom.welcomeModal = document.getElementById('welcome-modal');
+                this.dom.overviewModal = document.getElementById('overview-modal');
+                this.dom.startLearningBtn = document.getElementById('start-learning-btn');
+                this.dom.skipToExamHeaderBtn = document.getElementById('skip-to-exam-header-btn');
+                this.dom.infoModalContainer = document.getElementById('info-modal');
+                this.dom.completionOverlay = document.getElementById('completion-overlay');
+                this.dom.finalQuizOverlay = document.getElementById('final-quiz-overlay');
+                this.dom.progressText = document.getElementById('progress-text');
+                this.dom.progressBar = document.getElementById('progress-bar');
+                this.dom.fieldGuideContent = document.getElementById('field-guide-content');
+                this.dom.guideTooltip = document.getElementById('guide-tooltip');
+                this.dom.bubblesContainer = document.getElementById('bubbles-container');
+                this.dom.announcer = document.getElementById('aria-announcer');
+                this.dom.resetProgressBtn = document.getElementById('reset-progress-button');
+            },
+
+            bindEvents() {
+                document.body.addEventListener('click', (e) => {
+                    if (!this.state.soundsReady && Tone.context.state !== 'running') {
+                        Tone.start().then(() => this.setupSounds());
+                        Tone.Transport.start();
+                    }
+                    const button = e.target.closest('.ripple-container');
+                    if (button) {
+                        const rect = button.getBoundingClientRect();
+                        const ripple = document.createElement('span');
+                        ripple.className = 'ripple';
+                        ripple.style.height = ripple.style.width = `${Math.max(rect.width, rect.height)}px`;
+                        ripple.style.left = `${e.clientX - rect.left - ripple.offsetWidth / 2}px`;
+                        ripple.style.top = `${e.clientY - rect.top - ripple.offsetHeight / 2}px`;
+                        button.appendChild(ripple);
+                        setTimeout(() => ripple.remove(), 600);
+                    }
+                });
+
+                this.dom.startLearningBtn.addEventListener('click', () => this.hideWelcomeModal(this.showOverviewModal));
+                this.dom.skipToExamHeaderBtn.addEventListener('click', this.startFinalQuiz.bind(this));
+                
+                this.dom.app.addEventListener('mousemove', (e) => {
+                    const centerX = window.innerWidth / 2;
+                    const moveX = (e.clientX - centerX) / centerX;
+                    this.dom.scenery.querySelectorAll('.light-ray').forEach((ray, i) => {
+                        ray.style.transform = `rotate(${i * 10 - 20}deg) translateX(${moveX * -50}px)`;
+                    });
+                    this.dom.scenery.querySelector('.seabed').style.transform = `translateX(${moveX * -30}px)`;
+                    this.dom.scenery.querySelectorAll('.seabed-object').forEach(obj => {
+                        const factor = parseFloat(obj.dataset.parallaxFactor) || 0.5;
+                        obj.style.transform = `translateX(${moveX * -20 * factor}px)`;
+                    });
+                });
+                
+                this.dom.resetProgressBtn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
+                        this.resetProgress();
+                    }
+                });
+                
+                window.addEventListener('resize', this.calculateSwimBoundaries.bind(this));
+                
+                this.dom.fieldGuideContent.addEventListener('mouseover', e => {
+                    const target = e.target.closest('.guide-item');
+                    if (target) {
+                        const tooltipText = target.dataset.tooltip;
+                        if (tooltipText) {
+                            this.dom.guideTooltip.textContent = tooltipText;
+                            const targetRect = target.getBoundingClientRect();
+                            const guideRect = this.dom.fieldGuide.getBoundingClientRect();
+                            this.dom.guideTooltip.style.left = `${targetRect.left + targetRect.width / 2}px`;
+                            this.dom.guideTooltip.style.bottom = `${window.innerHeight - guideRect.top}px`;
+                            this.dom.guideTooltip.style.opacity = '1';
+                            this.dom.guideTooltip.style.visibility = 'visible';
+                        }
+                    }
+                });
+                this.dom.fieldGuideContent.addEventListener('mouseout', e => {
+                    const target = e.target.closest('.guide-item');
+                    if (target) {
+                        this.dom.guideTooltip.style.opacity = '0';
+                        this.dom.guideTooltip.style.visibility = 'hidden';
+                    }
+                });
+            },
+            
+            showWelcomeModal() {
+                 if (!sessionStorage.getItem('welcomeShown')) {
+                    this.dom.welcomeModal.classList.remove('hidden');
+                    setTimeout(() => {
+                        this.dom.welcomeModal.querySelector('div').classList.remove('scale-95', 'opacity-0');
+                        this.dom.welcomeModal.querySelector('div').classList.add('scale-100', 'opacity-100');
+                    }, 10);
+                } else {
+                     this.dom.welcomeModal.classList.add('hidden');
+                }
+            },
+            
+            hideWelcomeModal(callback) {
+                const modalDiv = this.dom.welcomeModal.querySelector('div');
+                modalDiv.classList.remove('scale-100', 'opacity-100');
+                modalDiv.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    this.dom.welcomeModal.classList.add('hidden');
+                    if (callback) callback.bind(this)();
+                }, 300);
+            },
+
+            calculateSwimBoundaries() {
+                const headerRect = this.dom.header.getBoundingClientRect();
+                const fieldGuideRect = this.dom.fieldGuide.getBoundingClientRect();
+                this.state.swimBoundaries.top = headerRect.bottom;
+                this.state.swimBoundaries.bottom = fieldGuideRect.top - 140; // 140 is fish height
+            },
+
+            // --- Sound & Haptics ---
+            setupSounds() {
+                const ambientSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 4, decay: 1, sustain: 0.5, release: 4 } }).toDestination();
+                ambientSynth.volume.value = -38;
+                this.sounds = {
+                    ambient: new Tone.Loop(time => { ambientSynth.triggerAttackRelease("C2", "8n", time); }, "2n").start(0),
+                    catch: new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.4 } }).toDestination(),
+                    correct: new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 } }).toDestination(),
+                    incorrect: new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 0.2 } }).toDestination(),
+                    splash: new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0 } }).toDestination(),
+                    complete: new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.1, decay: 0.5, sustain: 0.2, release: 1 } }).toDestination(),
+                };
+                this.state.soundsReady = true;
+            },
+            playSound(sound) { 
+                if (!this.state.soundsReady) return;
+                try {
+                    const s = this.sounds[sound];
+                    if (sound === 'correct') s.triggerAttackRelease("G5", "16n"); 
+                    else if (sound === 'incorrect') s.triggerAttackRelease("C3", "8n"); 
+                    else if (sound === 'catch') s.triggerAttackRelease("A3", "8n");
+                    else if (sound === 'splash') s.triggerAttackRelease("0.1s");
+                    else if (sound === 'complete') {
+                        s.triggerAttackRelease("C5", "8n", Tone.now());
+                        s.triggerAttackRelease("G5", "8n", Tone.now() + 0.2);
+                        s.triggerAttackRelease("C6", "4n", Tone.now() + 0.4);
+                    }
+                } catch (e) { console.error("Sound error:", e); }
+            },
+            hapticFeedback(type) { if (window.navigator.vibrate) { if (type === 'success') window.navigator.vibrate(100); else if (type === 'error') window.navigator.vibrate([100, 50, 100]); else window.navigator.vibrate(50); } },
+
+            // --- Core Logic ---
+            createFish(phishType, challengeIndex, fishIndex, totalFish) {
+                const fishEl = document.createElement('div');
+                fishEl.className = 'fish';
+                const challengeId = `${phishType.id}-${challengeIndex}`;
+                fishEl.dataset.challengeId = challengeId;
+                fishEl.setAttribute('role', 'button');
+                fishEl.setAttribute('tabindex', '0');
+                fishEl.setAttribute('aria-label', `Catch a ${phishType.name} fish`);
+                fishEl.innerHTML = `<div class="fish-inner">${phishType.icon}</div><div class="fish-hover-target"></div>`;
+                this.dom.lake.appendChild(fishEl);
+
+                const { top, bottom } = this.state.swimBoundaries;
+                const swimHeight = bottom - top;
+                const yPosition = top + Math.random() * swimHeight;
+                const xPosition = (window.innerWidth / totalFish) * fishIndex + (Math.random() * 100 - 50);
+
+                const fishObject = { 
+                    el: fishEl, x: xPosition, y: yPosition, 
+                    speedX: Math.random() * 0.6 + 0.3, dirX: Math.random() > 0.5 ? 1 : -1,
+                    speedY: Math.random() * 0.1 + 0.05, dirY: Math.random() > 0.5 ? 1 : -1,
+                    width: 140, state: 'swimming'
+                };
+                this.state.fishObjects.push(fishObject);
+                
+                const handleFishClick = () => {
+                    if (fishEl.classList.contains('caught')) return;
+                    this.createSplash(fishObject.x + 70, fishObject.y + 70);
+                    this.state.lastFocusedElement = document.activeElement;
+                    this.state.currentPhishType = phishType;
+                    this.state.currentChallengeIndex = challengeIndex;
+                    this.hapticFeedback('light');
+                    this.playSound('catch');
+                    this.showModal();
+                };
+
+                fishEl.addEventListener('click', handleFishClick);
+                fishEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleFishClick(); } });
+                fishEl.addEventListener('mouseenter', () => fishObject.state = 'hovered');
+                fishEl.addEventListener('mouseleave', () => fishObject.state = 'swimming');
+                fishEl.addEventListener('focus', () => fishObject.state = 'hovered');
+                fishEl.addEventListener('blur', () => fishObject.state = 'swimming');
+            },
+            
+            createFieldGuide() {
+                this.data.phishingTypes.forEach(phishType => {
+                    const item = document.createElement('div');
+                    item.className = 'guide-item p-3 rounded-lg flex flex-col items-center text-white w-28 ripple-container';
+                    item.dataset.id = phishType.id;
+                    item.dataset.tooltip = phishType.description.split('.')[0] + '.';
+                    item.setAttribute('role', 'button');
+                    item.setAttribute('tabindex', '0');
+                    item.setAttribute('aria-label', `Learn about ${phishType.name}`);
+                    
+                    const counterHTML = phishType.id !== 'glossary' 
+                        ? `<div class="guide-counter absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"></div>` 
+                        : '';
+                    
+                    item.innerHTML = `<div class="fish-inner">${phishType.icon}</div><span class="text-sm font-semibold mt-2 text-center">${phishType.name}</span>${counterHTML}`;
+                    
+                    const handleGuideClick = () => {
+                        this.state.lastFocusedElement = document.activeElement;
+                        this.state.currentPhishType = phishType;
+                        this.hapticFeedback('light');
+                        this.playSound('catch');
+
+                        if (phishType.id === 'glossary') {
+                            this.showGlossary();
+                        } else {
+                            // Directly show deep dive, using the first challenge for content
+                            this.state.currentChallengeIndex = 0;
+                            this.showModal('deepDive');
+                        }
+                    };
+
+                    item.addEventListener('click', handleGuideClick);
+                    item.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleGuideClick(); } });
+                    this.dom.fieldGuideContent.appendChild(item);
+                });
+            },
+
+            showOverviewModal() {
+                let currentStep = 0;
+                const tutorialSteps = [
+                    {
+                        title: "What is Phishing?",
+                        icon: `<svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                        text: "Phishing is a cyber attack where scammers use deceptive emails, texts, or calls to trick you into revealing sensitive information. Let's meet the different types you'll find in the lake."
+                    },
+                    ...this.data.phishingTypes.filter(t => t.id !== 'glossary').map(pt => ({
+                        title: pt.name,
+                        icon: pt.icon,
+                        text: pt.description.split('.')[0] + '.' // Get the first sentence
+                    }))
+                ];
+
+                const renderStep = (stepIndex) => {
+                    const step = tutorialSteps[stepIndex];
+                    const progress = ((stepIndex + 1) / tutorialSteps.length) * 100;
+                    
+                    const modalHTML = `
+                        <div id="modal-content" class="bg-gray-50 rounded-2xl shadow-2xl w-11/12 md:max-w-xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0">
+                            <div class="p-6 border-b border-gray-200">
+                                <h2 class="text-3xl font-bold text-blue-900 caveat text-center">Phishing 101: The Basics</h2>
+                                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-2"><div class="bg-blue-500 h-1.5 rounded-full" style="width: ${progress}%"></div></div>
+                            </div>
+                            <div class="p-6 md:p-8 overflow-y-auto text-center flex-grow">
+                                <div class="flex justify-center mb-4">${step.icon.replace(/class=".*?"/g, '').replace(/<svg/g, '<svg class="w-20 h-20"')}</div>
+                                <h3 class="text-2xl font-bold text-blue-800 mb-2">${step.title}</h3>
+                                <p class="text-gray-600">${step.text}</p>
+                            </div>
+                            <div class="p-4 bg-gray-100 border-t rounded-b-2xl flex items-center justify-between">
+                                <span class="text-xs text-gray-500">${stepIndex + 1} / ${tutorialSteps.length}</span>
+                                <button id="next-step-btn" class="bg-blue-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-600 transition-all transform hover:scale-105 ripple-container">
+                                    ${stepIndex === tutorialSteps.length - 1 ? "Start Fishing!" : "Next"}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    this.dom.overviewModal.innerHTML = modalHTML;
+                    
+                    const modalContent = this.dom.overviewModal.querySelector('#modal-content');
+                     setTimeout(() => {
+                        modalContent.classList.remove('scale-95', 'opacity-0');
+                        modalContent.classList.add('scale-100', 'opacity-100');
+                    }, 10);
+
+                    this.dom.overviewModal.querySelector('#next-step-btn').addEventListener('click', () => {
+                        currentStep++;
+                        if (currentStep < tutorialSteps.length) {
+                            renderStep(currentStep);
+                        } else {
+                            modalContent.classList.add('scale-95', 'opacity-0');
+                            setTimeout(() => {
+                                this.dom.overviewModal.classList.add('hidden');
+                                this.dom.overviewModal.innerHTML = '';
+                            }, 300);
+                            sessionStorage.setItem('welcomeShown', 'true');
+                        }
+                    });
+                };
+                
+                this.dom.overviewModal.classList.remove('hidden');
+                this.dom.overviewModal.classList.add('flex');
+                renderStep(currentStep);
+            },
+
+            showModal(initialView = 'challenge') {
+                const { currentPhishType, currentChallengeIndex, masteredChallenges } = this.state;
+                const challenge = currentPhishType.challenges[currentChallengeIndex];
+                const challengeId = `${currentPhishType.id}-${currentChallengeIndex}`;
+                this.dom.infoModalContainer.innerHTML = `<div id="modal-content" class="bg-gray-50 rounded-2xl shadow-2xl w-11/12 md:max-w-4xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0"><div class="p-5 border-b border-gray-200 flex justify-between items-center rounded-t-2xl"><h2 id="modal-title-heading" class="text-3xl font-bold text-blue-900 caveat">${currentPhishType.name}</h2><button id="close-modal-btn" aria-label="Close dialog" class="text-gray-400 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-200 ripple-container"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6 md:p-8 overflow-y-auto bg-white"></div></div>`;
+                const modalContent = this.dom.infoModalContainer.querySelector('#modal-content');
+                const modalBody = modalContent.querySelector('.overflow-y-auto');
+
+                if (masteredChallenges.has(challengeId) || initialView === 'deepDive') {
+                    modalBody.innerHTML = this.getDeepDiveHTML(challenge);
+                } else {
+                    modalBody.innerHTML = this.getChallengeHTML(challenge);
+                }
+
+                this.dom.infoModalContainer.classList.remove('hidden');
+                this.dom.infoModalContainer.classList.add('flex');
+                setTimeout(() => { modalContent.classList.remove('scale-95', 'opacity-0'); modalContent.classList.add('scale-100', 'opacity-100'); modalContent.querySelector('#close-modal-btn').focus(); }, 10);
+                this.addModalEventListeners(challenge);
+            },
+            
+            showGlossary() {
+                let termsHTML = Object.entries(this.data.glossaryTerms).map(([term, definition]) => `
+                    <div class="border-l-4 border-gray-300 p-4 bg-gray-50 rounded-r-lg mb-4">
+                        <h4 class="font-bold text-gray-800">${term}</h4>
+                        <p class="text-gray-600">${definition}</p>
+                    </div>`
+                ).join('');
+
+                this.dom.infoModalContainer.innerHTML = `<div id="modal-content" class="bg-white rounded-2xl shadow-2xl w-11/12 md:max-w-3xl max-h-[90vh] flex flex-col transform transition-all duration-300 scale-95 opacity-0"><div class="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-2xl"><h2 id="modal-title-heading" class="text-3xl font-bold text-blue-900 caveat">Glossary of Terms</h2><button id="close-modal-btn" aria-label="Close dialog" class="text-gray-400 hover:text-gray-700 transition-colors p-2 rounded-full hover:bg-gray-200 ripple-container"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6 md:p-8 overflow-y-auto bg-white">${termsHTML}</div></div>`;
+                const modalContent = this.dom.infoModalContainer.querySelector('#modal-content');
+                this.dom.infoModalContainer.classList.remove('hidden');
+                this.dom.infoModalContainer.classList.add('flex');
+                setTimeout(() => { modalContent.classList.remove('scale-95', 'opacity-0'); modalContent.classList.add('scale-100', 'opacity-100'); modalContent.querySelector('#close-modal-btn').focus(); }, 10);
+                this.dom.infoModalContainer.querySelector('#close-modal-btn').addEventListener('click', this.hideModal.bind(this));
+            },
+            
+            hideModal() {
+                const modalContent = this.dom.infoModalContainer.querySelector('#modal-content');
+                if (modalContent) {
+                    modalContent.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => {
+                        this.dom.infoModalContainer.classList.add('hidden');
+                        this.dom.infoModalContainer.classList.remove('flex');
+                        this.dom.infoModalContainer.innerHTML = '';
+                        if (this.state.lastFocusedElement) {
+                            this.state.lastFocusedElement.focus();
+                        }
+                    }, 300);
+                }
+            },
+            
+            getChallengeHTML(challenge) {
+                const shuffledOptions = [...challenge.options].sort(() => Math.random() - 0.5);
+                let optionsHTML = shuffledOptions.map((opt) => 
+                    `<button data-correct="${opt.isCorrect}" class="challenge-option w-full text-left p-4 border-2 rounded-lg bg-white shadow-sm ripple-container">
+                        <div class="text-gray-600">${opt.text}</div>
+                    </button>`
+                ).join('');
+                return `<div id="challenge-view"><p class="text-lg text-gray-700 mb-6 text-center">${challenge.prompt}</p><div class="space-y-4">${optionsHTML}</div></div>`;
+            },
+
+            getResultHTML(isCorrect) {
+                let title = isCorrect ? `<h3 class="text-3xl font-bold mb-2 text-green-600">Correct!</h3>` : `<h3 class="text-3xl font-bold mb-2 text-red-600">Not Quite</h3>`;
+                let explanation = isCorrect ? `<p class="text-gray-600 mb-6 max-w-lg mx-auto">Excellent work! You correctly identified the malicious message. Understanding the tactics used is the first step to defending against them.</p>` : `<p class="text-gray-600 mb-6 max-w-lg mx-auto">That one was tricky. Many phishing attempts are designed to look legitimate. Let's break down why the other option was the correct answer.</p>`;
+                return `<div id="result-view" class="text-center">${title}${explanation}<button id="learn-more-btn" class="bg-blue-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-600 transition-all transform hover:scale-105 ripple-container">Learn More</button></div>`;
+            },
+            
+            getDeepDiveHTML(challenge) {
+                const { currentPhishType } = this.state;
+                let tipsHTML = currentPhishType.tips.map(tip => `<li class="flex items-start"><svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>${tip}</span></li>`).join('');
+                let anatomyHTML = challenge.anatomy.map(indicator => 
+                    `<div class="border-l-4 border-red-400 p-4 bg-red-50 rounded-r-lg mb-4">
+                        <h4 class="font-bold text-red-800">${indicator.title}</h4>
+                        <p class="text-red-700 text-sm">${indicator.text}</p>
+                        <p class="text-purple-700 mt-2 text-xs italic border-t border-purple-200 pt-2"><span class="font-semibold">Psychological Principle:</span> ${indicator.psychology}</p>
+                    </div>`
+                ).join('');
+
+                const sectionHeader = (icon, title) => `<h3 class="flex items-center font-bold text-lg text-blue-800 mb-3"><span class="mr-3">${icon}</span>${title}</h3>`;
+
+                return `<div id="deep-dive-view" class="space-y-8">
+                    <div>
+                        ${sectionHeader('<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', 'What is it?')}
+                        <p class="text-gray-600">${currentPhishType.description}</p>
+                    </div>
+
+                    <div>
+                        ${sectionHeader('<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>', 'Real-World Scenario')}
+                        <p class="text-gray-600 border-l-4 border-blue-200 bg-blue-50 p-4 rounded-r-lg italic">${currentPhishType.realWorldScenario}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            ${sectionHeader('<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>', 'Anatomy of the Attack')}
+                            <p class="text-gray-600 border-l-4 border-red-200 bg-red-50 p-4 rounded-r-lg italic mb-4">${challenge.example}</p>
+                            ${anatomyHTML}
+                        </div>
+                        <div>
+                           ${sectionHeader('<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>', 'How to Stay Safe')}
+                            <ul class="space-y-3 text-gray-600 text-sm">${tipsHTML}</ul>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-6 border-t border-gray-200">
+                        ${sectionHeader('<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>', 'Key Takeaway')}
+                        <p class="text-blue-800 font-semibold bg-blue-100 p-4 rounded-lg">${challenge.keyTakeaway}</p>
+                    </div>
+                </div>`;
+            },
+            
+            addModalEventListeners(challenge) {
+                const modal = this.dom.infoModalContainer;
+                modal.querySelector('#close-modal-btn').addEventListener('click', this.hideModal.bind(this));
+                modal.querySelectorAll('.challenge-option').forEach(btn => btn.addEventListener('click', () => this.handleChallengeAnswer(btn.dataset.correct === 'true')));
+                const learnMoreBtn = modal.querySelector('#learn-more-btn');
+                if(learnMoreBtn) learnMoreBtn.addEventListener('click', () => { 
+                    modal.querySelector('.overflow-y-auto').innerHTML = this.getDeepDiveHTML(challenge);
+                    this.addModalEventListeners(challenge);
+                });
+            },
+
+            handleChallengeAnswer(isCorrect) {
+                const { currentPhishType, currentChallengeIndex } = this.state;
+                const challenge = currentPhishType.challenges[currentChallengeIndex];
+                this.dom.infoModalContainer.querySelector('.overflow-y-auto').innerHTML = this.getResultHTML(isCorrect);
+                this.addModalEventListeners(challenge);
+                
+                if (isCorrect) {
+                    this.dom.announcer.textContent = 'Correct answer selected.';
+                    const challengeId = `${currentPhishType.id}-${currentChallengeIndex}`;
+                    if (!this.state.masteredChallenges.has(challengeId)) {
+                        this.state.masteredChallenges.add(challengeId);
+                        localStorage.setItem('masteredChallenges', JSON.stringify(Array.from(this.state.masteredChallenges)));
+                        this.updateProgress();
+                    }
+                    this.playSound('correct'); this.hapticFeedback('success');
+                } else {
+                    this.dom.announcer.textContent = 'Incorrect answer selected. Please review the explanation.';
+                    this.playSound('incorrect'); this.hapticFeedback('error');
+                }
+            },
+            
+            updateProgress() {
+                const discoveredCount = this.state.masteredChallenges.size;
+                this.dom.progressText.textContent = `${discoveredCount} / ${this.totalChallenges} Mastered`;
+                this.dom.progressBar.style.width = `${(discoveredCount / this.totalChallenges) * 100}%`;
+                
+                if(discoveredCount > 0) {
+                    this.dom.skipToExamHeaderBtn.classList.remove('hidden');
+                } else {
+                    this.dom.skipToExamHeaderBtn.classList.add('hidden');
+                }
+
+                this.state.masteredChallenges.forEach(challengeId => {
+                    const fishEl = document.querySelector(`.fish[data-challenge-id="${challengeId}"]`);
+                    if (fishEl) fishEl.classList.add('caught');
+                });
+                
+                this.data.phishingTypes.forEach(phishType => {
+                    if (phishType.id === 'glossary') return;
+                    
+                    const guideItem = document.querySelector(`.guide-item[data-id="${phishType.id}"]`);
+                    const challengesForType = phishType.challenges;
+                    const masteredForType = challengesForType.filter((_, i) => this.state.masteredChallenges.has(`${phishType.id}-${i}`)).length;
+                    const remaining = challengesForType.length - masteredForType;
+                    const counter = guideItem.querySelector('.guide-counter');
+
+                    if (remaining === 0) {
+                        counter.innerHTML = `<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>`;
+                        counter.classList.remove('bg-red-500');
+                        counter.classList.add('bg-green-500');
+                    } else {
+                        counter.textContent = remaining;
+                        counter.classList.remove('bg-green-500');
+                        counter.classList.add('bg-red-500');
+                    }
+                });
+
+                if (discoveredCount === this.totalChallenges && this.totalChallenges > 0) {
+                    this.playSound('complete');
+                    this.showCompletion();
+                }
+            },
+            
+            createSplash(x, y) {
+                this.playSound('splash');
+                const splash = document.createElement('div');
+                splash.className = 'splash';
+                splash.style.left = `${x-50}px`;
+                splash.style.top = `${y-50}px`;
+                this.dom.lake.appendChild(splash);
+                setTimeout(() => splash.remove(), 500);
+            },
+            createBubble() {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                const size = Math.random() * 25 + 5;
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.left = `${Math.random() * 100}%`;
+                const duration = Math.random() * 12 + 6;
+                bubble.style.animationDuration = `${duration}s`;
+                const delay = Math.random() * 5;
+                bubble.style.animationDelay = `${delay}s`;
+                this.dom.bubblesContainer.appendChild(bubble);
+                setTimeout(() => bubble.remove(), (duration + delay) * 1000);
+            },
+
+            showCompletion() {
+                this.dom.completionOverlay.innerHTML = `<div class="text-center text-white p-8"><h2 class="text-6xl font-bold caveat mb-4">All Challenges Mastered!</h2><p class="text-2xl mb-8">You've learned the basics. Now, face the final exam to prove your expertise.</p><button id="start-quiz-btn" class="bg-sky-400 text-white font-bold py-3 px-8 rounded-lg hover:bg-sky-500 transition-all transform hover:scale-105 ripple-container">Start Final Exam</button></div>`;
+                this.dom.completionOverlay.classList.remove('hidden');
+                this.dom.completionOverlay.classList.add('flex');
+                this.dom.completionOverlay.querySelector('#start-quiz-btn').addEventListener('click', () => {
+                    this.dom.completionOverlay.classList.add('hidden');
+                    this.dom.completionOverlay.classList.remove('flex');
+                    this.startFinalQuiz();
+                });
+            },
+
+            startFinalQuiz() {
+                let currentQuestionIndex = 0;
+                let userScore = 0;
+                const examQuestions = [...this.data.finalQuizQuestions].sort(() => 0.5 - Math.random()).slice(0, 5);
+                this.dom.resetProgressBtn.disabled = true;
+                this.dom.resetProgressBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+                const showQuestion = (index) => {
+                    const question = examQuestions[index];
+                    let optionsHTML = question.options.map((opt, i) => `
+                        <div class="relative">
+                            <input type="checkbox" id="q${index}-opt${i}" value="${i}" class="quiz-check-input absolute opacity-0 w-full h-full inset-0 cursor-pointer">
+                            <label for="q${index}-opt${i}" class="quiz-check-label block w-full text-left p-4 border-2 border-gray-300 rounded-lg bg-white shadow-sm">${opt}</label>
+                        </div>`).join('');
+                    
+                    this.dom.finalQuizOverlay.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl w-11/12 md:max-w-3xl max-h-[90vh] flex flex-col"><div class="p-5 border-b bg-gray-50 rounded-t-2xl"><h2 class="text-3xl font-bold text-blue-900 caveat">Final Exam - Question ${index + 1} of ${examQuestions.length}</h2></div><div class="p-8 overflow-y-auto"><p class="text-lg text-gray-700 mb-2">${question.prompt}</p>${question.content || ''}<div class="space-y-4 mt-6">${optionsHTML}</div></div><div class="p-6 border-t mt-auto bg-gray-50/50"><button id="submit-quiz-answer" class="bg-blue-500 text-white font-bold py-3 px-6 rounded-lg w-full hover:bg-blue-600 transition-all text-lg ripple-container">Submit Answer</button></div></div>`;
+                    this.dom.finalQuizOverlay.classList.remove('hidden');
+                    this.dom.finalQuizOverlay.classList.add('flex');
+                    this.dom.finalQuizOverlay.querySelector('#submit-quiz-answer').addEventListener('click', checkAnswer);
+                };
+
+                const checkAnswer = () => {
+                    const question = examQuestions[currentQuestionIndex];
+                    const selectedOptions = Array.from(this.dom.finalQuizOverlay.querySelectorAll('input[type=checkbox]:checked')).map(cb => parseInt(cb.value));
+                    const correctAnswers = new Set(question.correctAnswers);
+                    const selectedAnswers = new Set(selectedOptions);
+                    
+                    if (selectedAnswers.size === correctAnswers.size && [...selectedAnswers].every(val => correctAnswers.has(val))) {
+                        userScore++;
+                    }
+
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < examQuestions.length) {
+                        showQuestion(currentQuestionIndex);
+                    } else {
+                        showQuizResult();
+                    }
+                };
+
+                const showQuizResult = () => {
+                    this.playSound('complete');
+                    const passingScore = Math.ceil(examQuestions.length * 0.8);
+                    const passed = userScore >= passingScore;
+                    let resultMessage = passed 
+                        ? "Perfect score! You're a true cybersecurity expert. Congratulations on mastering the lake!" 
+                        : "Good effort! You need a score of 80% or higher to pass. Review the Field Guide and try the exam again!";
+                    if(passed && userScore < examQuestions.length) {
+                        resultMessage = "Congratulations, you passed! You have a strong command of how to spot phishing attacks.";
+                    }
+                    
+                    let buttonHTML = passed 
+                        ? `<button id="reset-progress-btn-final" class="bg-blue-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-600 transition-all transform hover:scale-105 ripple-container">Play Again</button>`
+                        : `<button id="retry-exam-btn" class="bg-green-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-600 transition-all transform hover:scale-105 ripple-container">Try Exam Again</button>`;
+
+                    this.dom.finalQuizOverlay.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl w-11/12 md:max-w-2xl p-8 text-center"><h2 class="text-5xl font-bold caveat text-blue-900 mb-4">Exam Complete!</h2><p class="text-3xl text-gray-800 mb-6">Your Score: <span class="font-bold ${passed ? 'text-green-600' : 'text-red-600'}">${userScore} / ${examQuestions.length}</span></p><p class="text-gray-600 mb-8 text-lg">${resultMessage}</p>${buttonHTML}</div>`;
+                    
+                    if (passed) {
+                        this.dom.finalQuizOverlay.querySelector('#reset-progress-btn-final').addEventListener('click', this.resetProgress.bind(this));
+                    } else {
+                        this.dom.finalQuizOverlay.querySelector('#retry-exam-btn').addEventListener('click', this.startFinalQuiz.bind(this));
+                    }
+                    this.dom.resetProgressBtn.disabled = false;
+                    this.dom.resetProgressBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                };
+
+                showQuestion(currentQuestionIndex);
+            },
+
+            resetProgress() {
+                localStorage.removeItem('masteredChallenges');
+                sessionStorage.removeItem('welcomeShown');
+                location.reload();
+            },
+
+            animate(currentTime) {
+                if (!this.state.lastFrameTime) this.state.lastFrameTime = currentTime;
+                const deltaTime = currentTime - this.state.lastFrameTime;
+                this.state.lastFrameTime = currentTime;
+                const screenWidth = window.innerWidth;
+                const { top, bottom } = this.state.swimBoundaries;
+
+                this.state.fishObjects.forEach(fish => {
+                    if (fish.state !== 'hovered') {
+                        // Horizontal movement
+                        fish.x += fish.speedX * fish.dirX;
+                        if (fish.x > screenWidth - fish.width / 2) { fish.x = screenWidth - fish.width / 2; fish.dirX = -1; } 
+                        else if (fish.x < -fish.width / 2) { fish.x = -fish.width / 2; fish.dirX = 1; }
+
+                        // Vertical movement
+                        fish.y += fish.speedY * fish.dirY;
+                        if (fish.y > bottom) { fish.y = bottom; fish.dirY = -1; }
+                        else if (fish.y < top) { fish.y = top; fish.dirY = 1; }
+                    }
+                    const scaleX = fish.dirX === 1 ? 1 : -1;
+                    fish.el.style.transform = `translate(${fish.x}px, ${fish.y}px) scaleX(${scaleX})`;
+                });
+                requestAnimationFrame(this.animate.bind(this));
+            }
+        };
+
+        window.addEventListener('load', () => {
+            PhishingLake.init();
+        });
+    </script>
+</body>
+</html>
